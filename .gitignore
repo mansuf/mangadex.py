@@ -1,0 +1,5 @@
+# Internal tests
+test.py
+
+# Python bytes cache code
+*__pycache__
