@@ -65,10 +65,8 @@ class RateLimiter(asyncio.Semaphore):
         super().__init__(path.MAX_REQUESTS)
         self._countdown_fut = None
         self._delay = None
-        self._requests_remaining = None
-        self._requests_queued = 0
         self._path = path
-        self._rebooted = asyncio.Event()
+        self._requests_queued = 0
         self.method = path.METHOD
         self.path = path.PATH
         self.requests_limit = path.MAX_REQUESTS
@@ -80,15 +78,10 @@ class RateLimiter(asyncio.Semaphore):
         # Thread-safe ratelimiter operations
         self._lock = asyncio.Lock()
 
-    async def _countdown_reset_time(self):
-        delay = self._delay or self.reset_time
-        # If self.reboot_rate_limiter() is called
-        if self._delay and self._requests_remaining:
-            self._requests_remaining = None
-            self._delay = None
+    async def _countdown_reset_time(self, delay):
         await asyncio.sleep(delay)
-        self.resetted.set()
         await self.reset()
+        self.resetted.set()
         log.info('Rate limit for "%s %s" is now resetted' % (self.method, self.path))
 
     async def _wait(self, fut):
@@ -107,6 +100,7 @@ class RateLimiter(asyncio.Semaphore):
         return fut
 
     async def acquire(self) -> bool:
+        print(self._value)
         while self._value <= 0:
             async with self._lock:
                 self._requests_queued += 1
@@ -121,16 +115,15 @@ class RateLimiter(asyncio.Semaphore):
         async with self._lock:
             self._value -= 1
             if self.resetted.is_set():
-                # Begin the countdown !!
                 delay = self._delay or self.reset_time
-                log.debug('Starting reset time rate limiter (%ss) countdown' % delay)
-                self.resetted.clear()
-                self._countdown_fut = asyncio.ensure_future(self._countdown_reset_time())
-            self._rebooted.clear()
+                self._start_countdown(delay)
         return True
 
-    def is_rebooted(self):
-        return self._rebooted.is_set()
+    def _start_countdown(self, delay):
+        # Begin the countdown !!
+        log.debug('Starting reset time rate limiter (%ss) countdown' % delay)
+        self.resetted.clear()
+        self._countdown_fut = asyncio.ensure_future(self._countdown_reset_time(delay))
 
     async def reboot_rate_limiter(self, requests_remaining, retry_after):
         async with self._lock:
@@ -140,8 +133,6 @@ class RateLimiter(asyncio.Semaphore):
                 requests_remaining,
                 retry_after
             ))
-            self._requests_remaining = requests_remaining
-            self._delay = retry_after
             if self._countdown_fut is not None:
 
                 # Try to cancel the countdown future
@@ -153,15 +144,25 @@ class RateLimiter(asyncio.Semaphore):
                 self._countdown_fut = None
 
             # Reboot the rate limiter
-            self._value = 0
-            self._reset()
-            self._rebooted.set()
+            self._value = requests_remaining
+            self._reset_without_notify(requests_remaining)
+            self._start_countdown(retry_after)
+
+    def _reset_without_notify(self, limit):
+        while self._value != limit:
+            self._value += 1
+
+    def _wake_up_all(self):
+        while self._waiters:
+            waiter = self._waiters.popleft()
+            if not waiter.done():
+                waiter.set_result(None)
 
     def _reset(self):
-        limit = self._requests_remaining or self.requests_limit
+        limit = self.requests_limit
         while self._value != limit:
-            self._wake_up_next()
             self._value += 1
+        self._wake_up_all()
 
     async def reset(self) -> None:
         async with self._lock:
@@ -182,7 +183,7 @@ def get_rate_limiter(method: str, path: str) -> RateLimiter:
         if rate_limiter is None:
             # Create Restricted Ratelimiter if given method and path is endpoints restricted.
             for _path in _RESTRICTED_ENDPOINTS_LIMIT:
-                if _path.METHOD == method and _path.PATH == path:
+                if _path.METHOD == method and path.startswith(_path.PATH):
                     rate_limiter = RateLimiter(_path)
             
             # Create global rate limiter, if given method and path is not endpoint restricted.

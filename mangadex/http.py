@@ -22,7 +22,8 @@ class Route:
     def __init__(self, method: str, path: str, **params) -> None:
         self.method = method
         self.path = path
-        self.absolute_path = self.BASE + path.format(**params)
+        self.absolute_path = path.format(**params)
+        self.url = self.BASE + self.absolute_path
 
 class HTTPClient:
     def __init__(self, *, loop: asyncio.AbstractEventLoop = None) -> None:
@@ -47,8 +48,8 @@ class HTTPClient:
     async def request(self, route: Route, **params):
         self.recreate_session()
 
-        path = route.path
-        absolute_path = route.absolute_path
+        path = route.absolute_path
+        url = route.url
         method = route.method
 
         # Set up headers
@@ -68,7 +69,7 @@ class HTTPClient:
         for attempt in range(5):
             async with limiter:
                 try:
-                    async with self._session.request(method, absolute_path, **params) as resp:
+                    async with self._session.request(method, url, **params) as resp:
 
                         # We are being rate-limited
                         if resp.status == 429:
