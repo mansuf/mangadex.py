@@ -162,7 +162,7 @@ class RateLimiter(asyncio.Semaphore):
         limit = self.requests_limit
         while self._value != limit:
             self._value += 1
-        self._wake_up_all()
+            self._wake_up_next()
 
     async def reset(self) -> None:
         async with self._lock:

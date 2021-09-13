@@ -1,28 +1,19 @@
 import re
 import uuid
-from typing import Awaitable, Coroutine, Dict, List, Literal, Union
+
+from typing import List, Literal, Union
 from datetime import datetime
-from .types import *
+from .base import * 
+from ..types import *
+from ..utils import *
 
-class BaseRoute:
-    BASE = 'https://api.mangadex.org'
+__all__ = (
+    'MangaList',
+)
 
-    def build_request(self):
-        raise NotImplementedError()
+class MangaList(GET):
+    path = '/manga'
 
-class GET:
-    method = 'GET'
-
-class POST:
-    method = 'POST'
-
-class PUT:
-    method = 'PUT'
-
-class DEL:
-    method = 'DEL'
-
-class MangaList(BaseRoute, GET):
     def __init__(
         self,
         limit: int = 10,
@@ -41,9 +32,9 @@ class MangaList(BaseRoute, GET):
             MangaStatus.PAUSED,
             MangaStatus.CANCELLED
         ] = None,
-        original_language: List[_mangadex_languages] = None,
-        excluded_original_language: List[_mangadex_languages] = None,
-        available_original_language: List[_mangadex_languages] = None,
+        original_language: List[mangadex_languages] = None,
+        excluded_original_language: List[mangadex_languages] = None,
+        available_translated_language: List[mangadex_languages] = None,
         ids: List[str] = None,
         content_rating: List[Literal[
             ContentRating.SAFE,
@@ -69,12 +60,16 @@ class MangaList(BaseRoute, GET):
         # verify limit
         if not isinstance(limit, int):
             raise ValueError('limit must be int')
+        elif limit > 100 or limit <= 0:
+            raise ValueError('limit range must from 1 to 100')
         self.limit = limit
         
         # verify offset
         if offset:
             if not isinstance(offset, int):
                 raise ValueError('offset must be int')
+            elif offset <= 0:
+                raise ValueError('offset cannot lower than 0')
         self.offset = offset
         
         # verify title
@@ -162,36 +157,51 @@ class MangaList(BaseRoute, GET):
 
         # verify original_language
         if original_language:
-            if isinstance(original_language, MangaDexLanguage):
-                pass
-            elif isinstance(original_language, str):
-                if original_language not in langs:
-                    raise ValueError('Invalid language')
+            if isinstance(original_language, list) or isinstance(original_language, tuple):
+                for pos in range(len(original_language)):
+                    lang = original_language[pos]
+                    if isinstance(lang, MangaDexLanguage):
+                        pass
+                    elif isinstance(lang, str):
+                        if lang not in langs:
+                            raise ValueError('original_language[%s] is not valid language' % pos)
+                    else:
+                        raise ValueError('original_language[%s] must be MangaDexLanguage or str' % pos)
             else:
-                raise ValueError('original_language must be MangaDexLanguage or str')
+                raise ValueError('original_language must be tuple or list')
         self.original_language = original_language
 
         # verify excluded_original_language
         if excluded_original_language:
-            if isinstance(excluded_original_language, MangaDexLanguage):
-                pass
-            elif isinstance(excluded_original_language, str):
-                if excluded_original_language not in langs:
-                    raise ValueError('Invalid language')
+            if isinstance(excluded_original_language, list) or isinstance(excluded_original_language, tuple):
+                for pos in range(len(excluded_original_language)):
+                    lang = excluded_original_language[pos]
+                    if isinstance(lang, MangaDexLanguage):
+                        pass
+                    elif isinstance(lang, str):
+                        if lang not in langs:
+                            raise ValueError('excluded_original_language[%s] is not valid language' % pos)
+                    else:
+                        raise ValueError('excluded_original_language[%s] must be MangaDexLanguage or str' % pos)
             else:
-                raise ValueError('excluded_original_language must be MangaDexLanguage or str')
+                raise ValueError('excluded_original_language must be tuple or list')
         self.excluded_original_language = excluded_original_language
 
-        # verify available_original_language
-        if available_original_language:
-            if isinstance(available_original_language, MangaDexLanguage):
-                pass
-            elif isinstance(available_original_language, str):
-                if available_original_language not in langs:
-                    raise ValueError('Invalid language')
+        # verify available_translated_language
+        if available_translated_language:
+            if isinstance(available_translated_language, list) or isinstance(available_translated_language, tuple):
+                for pos in range(len(available_translated_language)):
+                    lang = available_translated_language[pos]
+                    if isinstance(lang, MangaDexLanguage):
+                        pass
+                    elif isinstance(lang, str):
+                        if lang not in langs:
+                            raise ValueError('available_translated_language[%s] is not valid language' % pos)
+                    else:
+                        raise ValueError('available_translated_language[%s] must be MangaDexLanguage or str' % pos)
             else:
-                raise ValueError('available_original_language must be MangaDexLanguage or str')
-        self.available_original_language = available_original_language
+                raise ValueError('available_translated_language must be tuple or list')
+        self.available_translated_language = available_translated_language
 
         # verify ids
         if ids:
@@ -249,8 +259,10 @@ class MangaList(BaseRoute, GET):
         self.updated_at_since = updated_at_since
 
         # verify order
-        if not isinstance(order, MangaListOrder):
-            raise ValueError('order must be a MangaListOrder')
+        if order:
+            if not isinstance(order, MangaListOrder):
+                raise ValueError('order must be a MangaListOrder')
+        self.order = order
         
         # verify includes
         if includes:
@@ -258,13 +270,129 @@ class MangaList(BaseRoute, GET):
                 include_values = list(i.value for i in includes)
                 for pos in range(len(includes)):
                     include = includes[pos]
-                    if isinstance(include, ContentRating):
+                    if isinstance(include, Relationship):
                         pass
                     elif isinstance(include, str):
                         if include not in include_values:
-                            raise ValueError('includes[%s] is not valid content rating' % pos)
+                            raise ValueError('includes[%s] is not valid Relationship' % pos)
                     else:
-                        raise ValueError('includes must be ContentRating or str')
+                        raise ValueError('includes[%s] must be Relationship or str' % pos)
             else:
                 raise ValueError('includes must be list or tuple')
-            self.includes = includes
+        self.includes = includes
+
+    def build_request(self) -> dict:
+        request_param = super().build_request(self.path)
+        param = {}
+        request_param['params'] = param
+
+        param['limit'] = self.limit
+
+        if self.offset:
+            param['offset'] = self.offset
+        
+        if self.title:
+            param['title'] = self.title
+        
+        if self.authors:
+            param['authors[]'] = self.authors
+        
+        if self.artists:
+            param['artists[]'] = self.artists
+
+        if self.year:
+            param['year'] = self.year
+        
+        if self.included_tags:
+            param['includedTags[]'] = self.included_tags
+
+        param['includedTagsMode'] = self.included_tags_mode
+
+        if self.excluded_tags:
+            param['excludedTags[]'] = self.excluded_tags
+        
+        param['excludedTagsMode'] = self.excluded_tags_mode
+
+        if self.status:
+            param['status[]'] = self.status
+        
+        original_lang = []
+        if self.original_language:
+            for lang in self.original_language:
+                if isinstance(lang, MangaDexLanguage):
+                    original_lang.append(lang.value)
+                else: # str instance
+                    original_lang.append(lang)
+            param['originalLanguage[]'] = original_lang
+
+        excluded_original_lang = []
+        if self.excluded_original_language:
+            for lang in self.excluded_original_language:
+                if isinstance(lang, MangaDexLanguage):
+                    excluded_original_lang.append(lang.value)
+                else: # str instance
+                    excluded_original_lang.append(lang)
+            param['excludedOriginalLanguage[]'] = self.excluded_original_language
+        
+        available_translated_lang = []
+        if self.available_translated_language:
+            for lang in self.available_translated_language:
+                if isinstance(lang, MangaDexLanguage):
+                    available_translated_lang.append(lang.value)
+                else:
+                    available_translated_lang.append(lang)
+            param['availableTranslatedLanguage[]'] = self.available_translated_language
+        
+        if self.ids:
+            param['ids[]'] = self.ids
+        
+        content_ratings = []
+        for content_rating in self.content_rating:
+            if isinstance(content_rating, ContentRating):
+                content_ratings.append(content_rating.value)
+            else: # str instance
+                content_ratings.append(content_rating)
+        param['contentRating[]'] = content_ratings
+
+        if self.created_at_since:
+            if isinstance(self.created_at_since, datetime):
+                created_at_since = self.created_at_since.strftime('%Y-%m-%dT%H:%M:%S')
+            else:
+                created_at_since = self.created_at_since
+            param['createdAtSince'] = created_at_since
+        
+        if self.updated_at_since:
+            if isinstance(self.updated_at_since, datetime):
+                updated_at_since = self.updated_at_since.strftime('%Y-%m-%dT%H:%M:%S')
+            else:
+                updated_at_since = self.updated_at_since
+            param['updatedAtSince'] = updated_at_since
+        
+        if self.order:
+            param['order'] = self.order.params
+        
+        includes = []
+        if self.includes:
+            for include in includes:
+                if isinstance(include, Relationship):
+                    includes.append(include.value)
+                else: # str instance
+                    includes.append(include)
+            param['includes[]'] = includes
+
+        return request_param
+
+class CreateManga(POST, RequireLogin):
+    def __init__(
+        self,
+        token: str,
+        title: MangaTitles,
+        alt_titles: List[MangaTitles] = None,
+        description: MangaDescriptions = None,
+        authors: List[str] = None,
+        artists: List[str] = None,
+        links: MangaLink = None
+    ) -> None:
+        self.set_auth_token(token)
+
+        # verify title

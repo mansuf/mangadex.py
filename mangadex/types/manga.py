@@ -20,42 +20,6 @@ class PublicationDemographic(Enum):
     SEINEN = 'seinen'
     NONE = 'none'
 
-class MangaListOrder:
-    def __init__(
-        self,
-        title: Literal['asc', 'desc'] = None,
-        year: Literal['asc', 'desc'] = None,
-        created_at: Literal['asc', 'desc'] = None,
-        updated_at: Literal['asc', 'desc'] = None, 
-        latest_uploaded_chapter: Literal['asc', 'desc'] = 'desc',
-        followed_count: Literal['asc', 'desc'] = None,
-        relevance: Literal['asc', 'desc'] = None
-    ) -> None:
-        params = {}
-        
-        if title:
-            params['title'] = title
-        
-        if year:
-            params['year'] = year
-
-        if created_at:
-            params['createdAt'] = created_at
-
-        if updated_at:
-            params['updatedAt'] = updated_at
-        
-        if latest_uploaded_chapter:
-            params['latestUploadedChapter'] = latest_uploaded_chapter
-
-        if followed_count:
-            params['followedCount'] = followed_count
-        
-        if relevance:
-            params['relevance'] = relevance
-
-        self.params = params
-
 class Relationship(Enum):
     MANGA = 'manga'
     CHAPTER = 'chapter'
@@ -66,3 +30,19 @@ class Relationship(Enum):
     TAG = 'tag'
     USER = 'user'
     CUSTOM_LIST = 'custom_list'
+
+class _MangaLink:
+    def __init__(self, key, url, full_url=True) -> None:
+        self.key = key
+        self.url = url
+        self.full_url = full_url
+
+    def build_url(self, id_or_slug: str):
+        pass
+
+class MangaLink(Enum):
+    AniList = _MangaLink('al', 'https://anilist.co/manga/{}', False)
+    AnimePlanet = _MangaLink('ap', 'https://www.anime-planet.com/manga/{}', False)
+    BookWalker = _MangaLink('bw', '	https://bookwalker.jp/{}', False)
+    Mangaupdates = _MangaLink('mu', 'https://www.mangaupdates.com/series.html?id={}', False)
+    Novelupdates = _MangaLink('nu', 'https://www.novelupdates.com/series/{}', False)

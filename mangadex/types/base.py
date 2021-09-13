@@ -1,6 +1,10 @@
 from enum import Enum
 from typing import Literal
 
+__all__ = (
+    'MangaDexLanguage', 'mangadex_languages'
+)
+
 # Adapted from https://github.com/tachiyomiorg/tachiyomi-extensions/blob/master/src/all/mangadex/src/eu/kanade/tachiyomi/extension/all/mangadex/MangaDexFactory.kt#L54-L95
 class MangaDexLanguage(Enum):
     English = 'en'
@@ -47,7 +51,7 @@ class MangaDexLanguage(Enum):
     Other = None
 
 # For typing
-_mangadex_languages: Literal[
+mangadex_languages: Literal[
     MangaDexLanguage.English,
     MangaDexLanguage.Japanese,
     MangaDexLanguage.Polish,
@@ -90,4 +94,4 @@ _mangadex_languages: Literal[
     MangaDexLanguage.Hindi,
     MangaDexLanguage.Norwegian,
     MangaDexLanguage.Other
-]
+] = None
