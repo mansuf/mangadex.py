@@ -37,5 +37,5 @@ class POST(BaseRoute):
 class PUT(BaseRoute):
     method = 'PUT'
 
-class DEL(BaseRoute):
-    method = 'DEL'
+class DELETE(BaseRoute):
+    method = 'DELETE'

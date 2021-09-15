@@ -2,7 +2,8 @@ import re
 from .base import GET, POST, RequireLogin
 
 __all__ = (
-    'Login', 
+    'Login', 'CheckToken',
+    'RefreshToken', 'Logout'
 )
 
 class Login(POST):

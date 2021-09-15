@@ -1,36 +1,21 @@
 import asyncio
+import json
 import logging
 import aiohttp
-import sys
 import time
-from .ratelimiter import get_rate_limiter
-from .errors import HTTPException
+from .routes import *
+from .errors import Forbidden, HTTPException, ServerError
+from .auth import *
 from . import __version__
 
-try:
-    from orjson import dumps
-    json_dumper = dumps
-except ImportError:
-    from json import dumps
-    json_dumper = dumps
+json_dumper = json.dumps
 
 log = logging.getLogger(__name__)
 
-class Route:
-    BASE = 'https://api.mangadex.org'
-
-    def __init__(self, method: str, path: str, **params) -> None:
-        self.method = method
-        self.path = path
-        self.absolute_path = path.format(**params)
-        self.url = self.BASE + self.absolute_path
-
 class HTTPClient:
-    def __init__(self, *, loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(self, *, loop = None) -> None:
         self.loop = loop or asyncio.get_event_loop()
         self._session = None
-        user_agent = 'mangadex.py (https://github.com/mansuf/mangadex.py {0}) Python/{1[0]}.{1[1]} aiohttp/{2}'
-        self.user_agent = user_agent.format(__version__, sys.version_info, aiohttp.__version__)
 
     def _create_session(self):
         self._session = aiohttp.ClientSession(json_serialize=json_dumper, loop=self.loop)
@@ -45,52 +30,68 @@ class HTTPClient:
         if self._session:
             await self._session.close()
 
-    async def request(self, route: Route, **params):
+    async def request(self, route: BaseRoute):
         self.recreate_session()
+        params = route.build_request()
 
-        path = route.absolute_path
-        url = route.url
-        method = route.method
-
-        # Set up headers
-        headers = {
-            "User-Agent": self.user_agent
-        }
-        params['headers'] = headers
-        
-        # Check if request is json encoded
-        if params.get('json') is not None:
-            headers["Content-Type"] = "application/json"
-
-        # Get limiter requests
-        limiter = get_rate_limiter(method, path)
-
-        # Begin request
         for attempt in range(5):
-            async with limiter:
-                try:
-                    async with self._session.request(method, url, **params) as resp:
-
-                        # We are being rate-limited
-                        if resp.status == 429:
-                            print(await resp.json())
-                            retry_after = resp.headers.get('x-ratelimit-retry-after') or resp.headers.get('Retry-After')
-                            delay_remaining = float(retry_after) - time.time()
-                            ratelimit_remaining = int(resp.headers['x-ratelimit-remaining'])
-                            await limiter.reboot_rate_limiter(ratelimit_remaining, delay_remaining)
-                            continue
+            try:
+                async with self._session.request(**params) as resp:
+                    
+                    # We are being rate limited
+                    if resp.status == 429:
                         
-                        if resp.status == 200:
-                            return await resp.json()
-                except OSError:
-                    pass
+                        # x-ratelimit-retry-after is from MangaDex and
+                        # Retry-After is from DDoS-Guard
+                        if resp.headers.get('x-ratelimit-retry-after'):
+                            delay = float(resp.headers.get('x-ratelimit-retry-after')) - time.time()
+
+                        elif resp.headers.get('Retry-After'):
+                            delay = float(resp.headers.get('Retry-After'))
+
+                        await asyncio.sleep(delay)
+                        continue
+                    
+                    # The request was successful
+                    elif resp.status == 200:
+                        return await resp.json()
+                    
+                    # Server error
+                    elif resp.status >= 500:
+                        err = await resp.json()
+                        raise ServerError(err)
+
+                    # Forbidden
+                    elif resp.status == 403:
+                        err = await resp.json()
+                        raise Forbidden(err)
+
+                    # 400 and upper.
+                    else:
+                        err = await resp.json()
+                        raise HTTPException(err)
+
+            except OSError:
+                await asyncio.sleep(1 + attempt * 2)
+                continue
+
         # We're run out of attempts, throwing error
-        return None
-                
-
-
+        raise RuntimeError('Unknown error in HTTP handling')
 
     # Authentication related
 
-    def login(self):
-        pass
+    async def login(self, *args, **kwargs) -> LoginResult:
+        data = await self.request(Login(*args, **kwargs))
+        return LoginResult(data)
+
+    async def logout(self, session_token) -> LogoutResult:
+        data = await self.request(Logout(session_token))
+        return LogoutResult(data)
+
+    async def check_token(self, session_token) -> CheckTokenResult:
+        data = await self.request(CheckToken(session_token))
+        return CheckTokenResult(data)
+
+    async def refresh_token(self, refresh_token) -> RefreshTokenResult:
+        data = await self.request(RefreshToken(refresh_token))
+        return RefreshTokenResult(data)

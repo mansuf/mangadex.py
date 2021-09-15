@@ -1,3 +1,7 @@
+# This is experimental ratelimit handler.
+# Handle ratelimit properly without constantly checking if we are being rate-limited or not.
+# Normal users shouldn't use this, cause this is experimental.
+
 import asyncio
 import threading
 import logging
