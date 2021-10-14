@@ -1,5 +1,5 @@
 from typing import Literal, Union
-from .types import MangaDexLanguage
+from ..types import MangaDexLanguage
 
 # For typing 
 _mangalist_order = Literal['asc', 'desc']

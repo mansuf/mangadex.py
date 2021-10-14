@@ -3,10 +3,13 @@ import json
 import logging
 import aiohttp
 import time
-from .routes import *
-from .errors import Forbidden, HTTPException, ServerError
-from .auth import *
-from . import __version__
+from .result import *
+from ..routes import *
+from ..errors import Forbidden, HTTPException, ServerError
+
+__all__ = (
+    'HTTPClient',
+)
 
 json_dumper = json.dumps
 
@@ -95,3 +98,9 @@ class HTTPClient:
     async def refresh_token(self, refresh_token) -> RefreshTokenResult:
         data = await self.request(RefreshToken(refresh_token))
         return RefreshTokenResult(data)
+
+    # Manga related
+
+    async def manga_list(self, *args, **kwargs) -> MangaListResult:
+        data = await self.request(MangaList(*args, **kwargs))
+        return MangaListResult(data)

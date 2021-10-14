@@ -16,46 +16,26 @@ class MangaList(GET):
 
     def __init__(
         self,
-        limit: int = 10,
-        offset: int = None,
-        title: str = None,
-        authors: List[str] = None,
-        artists: List[str] = None,
-        year: int = None,
-        included_tags: List[str] = None,
-        included_tags_mode: Literal['AND', 'OR'] = 'AND',
-        excluded_tags: List[str] = None,
-        excluded_tags_mode: Literal['AND', 'OR'] = 'OR',
-        status: Literal[
-            MangaStatus.ONGOING,
-            MangaStatus.COMPLETED,
-            MangaStatus.PAUSED,
-            MangaStatus.CANCELLED
-        ] = None,
-        original_language: List[mangadex_languages] = None,
-        excluded_original_language: List[mangadex_languages] = None,
-        available_translated_language: List[mangadex_languages] = None,
-        ids: List[str] = None,
-        content_rating: List[Literal[
-            ContentRating.SAFE,
-            ContentRating.SUGGESTIVE,
-            ContentRating.EROTICA,
-            ContentRating.PORNOGRAPHIC
-        ]] = [ContentRating.SAFE, ContentRating.SUGGESTIVE, ContentRating.EROTICA],
-        created_at_since: Union[datetime, str] = None,
-        updated_at_since: Union[datetime, str] = None,
-        order: MangaListOrder = None,
-        includes: List[Literal[
-            Relationship.MANGA,
-            Relationship.CHAPTER,
-            Relationship.COVER_ART,
-            Relationship.AUTHOR,
-            Relationship.ARTIST,
-            Relationship.SCANLATION_GROUP,
-            Relationship.TAG,
-            Relationship.USER,
-            Relationship.CUSTOM_LIST
-        ]] = None,
+        limit,
+        offset,
+        title,
+        authors,
+        artists,
+        year,
+        included_tags,
+        included_tags_mode,
+        excluded_tags,
+        excluded_tags_mode,
+        status,
+        original_language,
+        excluded_original_language,
+        available_translated_language,
+        ids,
+        content_rating,
+        created_at_since,
+        updated_at_since,
+        order,
+        includes,
     ) -> None:
         # verify limit
         if not isinstance(limit, int):
@@ -144,10 +124,10 @@ class MangaList(GET):
         
         # verify status
         if status:
-            if isinstance(status, MangaStatus):
+            if isinstance(status, Status):
                 pass
             elif isinstance(status, str):
-                if status not in list(i.value for i in MangaStatus):
+                if status not in list(i.value for i in Status):
                     raise ValueError('Invalid manga status')
             else:
                 raise ValueError('status must be MangaStatus or str')
@@ -208,6 +188,8 @@ class MangaList(GET):
             if not isinstance(ids, list):
                 raise ValueError('ids must be list or tuple')
             else:
+                if len(ids) > 100:
+                    raise ValueError('ids cannot be more than 100')
                 for pos in range(len(ids)):
                     _id = ids[pos]
                     try:
@@ -383,16 +365,5 @@ class MangaList(GET):
         return request_param
 
 class CreateManga(POST, RequireLogin):
-    def __init__(
-        self,
-        token: str,
-        title: MangaTitles,
-        alt_titles: List[MangaTitles] = None,
-        description: MangaDescriptions = None,
-        authors: List[str] = None,
-        artists: List[str] = None,
-        links: MangaLink = None
-    ) -> None:
-        self.set_auth_token(token)
-
-        # verify title
+    def __init__() -> None:
+        raise NotImplementedError

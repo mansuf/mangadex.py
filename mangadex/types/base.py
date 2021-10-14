@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Literal
 
 __all__ = (
-    'MangaDexLanguage', 'mangadex_languages'
+    'MangaDexLanguage',
 )
 
 # Adapted from https://github.com/tachiyomiorg/tachiyomi-extensions/blob/master/src/all/mangadex/src/eu/kanade/tachiyomi/extension/all/mangadex/MangaDexFactory.kt#L54-L95
@@ -48,50 +48,4 @@ class MangaDexLanguage(Enum):
     Hebrew = 'he'
     Hindi = 'hi'
     Norwegian = 'no'
-    Other = None
-
-# For typing
-mangadex_languages: Literal[
-    MangaDexLanguage.English,
-    MangaDexLanguage.Japanese,
-    MangaDexLanguage.Polish,
-    MangaDexLanguage.SerboCroatian,
-    MangaDexLanguage.Dutch,
-    MangaDexLanguage.Italian,
-    MangaDexLanguage.Russian,
-    MangaDexLanguage.German,
-    MangaDexLanguage.Hungarian,
-    MangaDexLanguage.French,
-    MangaDexLanguage.Finnish,
-    MangaDexLanguage.Vietnamese,
-    MangaDexLanguage.Greek,
-    MangaDexLanguage.Bulgarian,
-    MangaDexLanguage.SpanishSpain,
-    MangaDexLanguage.PortugueseBrazil,
-    MangaDexLanguage.PortuguesePortugal,
-    MangaDexLanguage.Swedish,
-    MangaDexLanguage.Arabic,
-    MangaDexLanguage.Danish,
-    MangaDexLanguage.ChineseSimplified,
-    MangaDexLanguage.Bengali,
-    MangaDexLanguage.Romanian,
-    MangaDexLanguage.Czech,
-    MangaDexLanguage.Mongolian,
-    MangaDexLanguage.Turkish,
-    MangaDexLanguage.Indonesian,
-    MangaDexLanguage.Korean,
-    MangaDexLanguage.SpanishLTAM,
-    MangaDexLanguage.Persian,
-    MangaDexLanguage.Malay,
-    MangaDexLanguage.Thai,
-    MangaDexLanguage.Catalan,
-    MangaDexLanguage.Filipino,
-    MangaDexLanguage.ChineseTraditional,
-    MangaDexLanguage.Ukrainian,
-    MangaDexLanguage.Burmese,
-    MangaDexLanguage.Lithuanian,
-    MangaDexLanguage.Hebrew,
-    MangaDexLanguage.Hindi,
-    MangaDexLanguage.Norwegian,
-    MangaDexLanguage.Other
-] = None
+    Other = 'null'

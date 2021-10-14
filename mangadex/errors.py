@@ -2,6 +2,14 @@ class MangaDexException(BaseException):
     """Base exception for all mangadex error"""
     pass
 
+class NotLoggedIn(MangaDexException):
+    """User are not logged in."""
+    pass
+
+class ConverterError(MangaDexException):
+    """Converter is failing"""
+    pass
+
 class HTTPException(MangaDexException):
     """Base exception for HTTP Response in mangadex API."""
     def __init__(self, err: dict) -> None:
@@ -19,8 +27,4 @@ class ServerError(HTTPException):
 
 class Forbidden(HTTPException):
     """Error happened when you don't have permission to do that"""
-    pass
-
-class NotLoggedIn(MangaDexException):
-    """User are not logged in."""
     pass

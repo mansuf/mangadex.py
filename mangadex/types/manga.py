@@ -1,7 +1,9 @@
+import uuid
 from enum import Enum
-from typing import Literal, NamedTuple
+from .base import MangaDexLanguage
+from ..errors import ConverterError
 
-class MangaStatus(Enum):
+class Status(Enum):
     ONGOING = 'ongoing'
     COMPLETED = 'completed'
     PAUSED = 'hiatus'
@@ -31,18 +33,126 @@ class Relationship(Enum):
     USER = 'user'
     CUSTOM_LIST = 'custom_list'
 
-class _MangaLink:
-    def __init__(self, key, url, full_url=True) -> None:
-        self.key = key
-        self.url = url
-        self.full_url = full_url
+class LinkData:
+    int_conv = lambda x: str(int(x))
 
-    def build_url(self, id_or_slug: str):
-        pass
+    # Each REFS (References) has key, name, url, and converters
+    REFS = [
+        [
+            'al',
+            'AniList',
+            'https://anilist.co/manga/{}',
+            [int_conv]
+        ],
+        [
+            'ap',
+            'AnimePlanet',
+            'https://www.anime-planet.com/manga/{}',
+            [str]
+        ],
+        [
+            'bw',
+            'BookWalker',
+            'https://bookwalker.jp/{}',
+            [
+                lambda x: 'series/%s' % int(x), # If integer, then the url path will be extended to series
+                lambda x: str(uuid.UUID(x, version=4)) # Make sure we check valid UUID
+            ]
+        ],
+        [
+            'mu',
+            'Mangaupdates',
+            'https://www.mangaupdates.com/series.html?id={}',
+            [int_conv]
+        ],
+        [
+            'nu',
+            'Novelupdates',
+            'https://www.novelupdates.com/series/{}',
+            [str]
+        ],
+        [
+            'kt',
+            'Kitsu',
+            'https://kitsu.io/api/edge/manga{}',
+            [
+                lambda x: '/%s' % int_conv(x),
+                lambda x: '?filter[slug]=%s' % x
+            ]
+        ],
+        [
+            'amz',
+            'Amazon',
+            '{}',
+            [str]
+        ],
+        [
+            'ebj',
+            'eBookJapan',
+            '{}',
+            [str]
+        ],
+        [
+            'mal',
+            'MyAnimeList',
+            'https://myanimelist.net/manga/{}',
+            [int_conv]
+        ],
+        [
+            'cdj',
+            'CDJapan',
+            '{}',
+            [str]
+        ],
+        [
+            'raw',
+            'Raw', # We don't know the source is, so we leave it empty
+            '{}',
+            [str]
+        ],
+        [
+            'engtl',
+            'English Licensed', # We don't know the source is, so we leave it empty
+            '{}',
+            [str]
+        ]
+    ]
 
-class MangaLink(Enum):
-    AniList = _MangaLink('al', 'https://anilist.co/manga/{}', False)
-    AnimePlanet = _MangaLink('ap', 'https://www.anime-planet.com/manga/{}', False)
-    BookWalker = _MangaLink('bw', '	https://bookwalker.jp/{}', False)
-    Mangaupdates = _MangaLink('mu', 'https://www.mangaupdates.com/series.html?id={}', False)
-    Novelupdates = _MangaLink('nu', 'https://www.novelupdates.com/series/{}', False)
+    def __init__(self, site, slug_or_id) -> None:
+        for key, name, url, converters in self.REFS:
+            if key == site:
+                break
+        
+        self.name = name
+        self.key_site = key
+        self.slug_or_id = slug_or_id
+        
+        exceptions = []
+        for converter in converters:
+            try:
+                self.url = url.format(converter(slug_or_id))
+            except Exception as e:
+                exceptions.append(e)
+        if exceptions:
+            raise ConverterError('converter is failing, %s' % exceptions)
+
+    def __str__(self) -> str:
+        return '<MangaLinkData source="%s" link="%s">' % (
+            self.name,
+            self.url
+        )
+
+    def get_link(self) -> str:
+        return self.url
+
+class Title:
+    def __init__(self, data) -> None:
+        lang = list(data.keys())[0]
+        self.language = MangaDexLanguage(lang)
+        self.title = data.get(lang)
+
+    def __str__(self) -> str:
+        return self.title
+    
+    def __repr__(self) -> str:
+        return self.title

@@ -4,7 +4,7 @@ from .. import __version__
 
 __all__ = (
     'BaseRoute', 'RequireLogin', 'GET',
-    'POST', 'PUT', 'DEL'
+    'POST', 'PUT', 'DELETE',
 )
 
 class BaseRoute:
